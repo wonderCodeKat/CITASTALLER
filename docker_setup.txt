@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  # Base de datos PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: taller_postgres
+    environment:
+      POSTGRES_DB: taller_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./setup_database.sql:/docker-entrypoint-initdb.d/setup_database.sql
+    restart: unless-stopped
+    networks:
+      - taller_network
+
+  # Aplicación Streamlit
+  streamlit_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taller_streamlit
+    ports:
+      - "8501:8501"
+    environment:
+      - DB_HOST=postgres
+      - DB_NAME=taller_db
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_PORT=5432
+    depends_on:
+      - postgres
+    volumes:
+      - ./app.py:/app/app.py
+    restart: unless-stopped
+    networks:
+      - taller_network
+
+  # pgAdmin para administración de la base de datos (opcional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: taller_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@taller.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - taller_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  taller_network:
+    driver: bridge
